@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import MapComponent from './components/MapComponent';
+import { calculateRedirection } from './utils/topsisSolver';
 import './App.css';
 
 const MOCK_DATA = {
-  'SM City Baguio': { densityScore: 60, throughputScore: 72, travelTime: 5, environment: 'Indoor' },
-  'Burnham Park': { densityScore: 75, throughputScore: 45, travelTime: 12, environment: 'Outdoor' },
-  'Session Road': { densityScore: 90, throughputScore: 21, travelTime: 8, environment: 'Outdoor' },
-  'Baguio Cathedral': { densityScore: 40, throughputScore: 85, travelTime: 15, environment: 'Indoor' },
-  'Wright Park': { densityScore: 25, throughputScore: 95, travelTime: 20, environment: 'Outdoor' },
-  'Public Market Area': { densityScore: 85, throughputScore: 30, travelTime: 10, environment: 'Outdoor' },
+  'SM City Baguio': { densityScore: 60, throughputScore: 72, distance: 0.8, environment: 'Indoor', isPaid: false, seatingCapacity: 'High', scenicValue: 40 },
+  'Burnham Park': { densityScore: 75, throughputScore: 45, distance: 1.2, environment: 'Outdoor', isPaid: false, seatingCapacity: 'High', scenicValue: 90 },
+  'Session Road': { densityScore: 90, throughputScore: 21, distance: 0.5, environment: 'Outdoor', isPaid: false, seatingCapacity: 'Low', scenicValue: 80 },
+  'Baguio Cathedral': { densityScore: 40, throughputScore: 85, distance: 1.5, environment: 'Indoor', isPaid: false, seatingCapacity: 'Medium', scenicValue: 85 },
+  'Wright Park': { densityScore: 25, throughputScore: 95, distance: 3.5, environment: 'Outdoor', isPaid: false, seatingCapacity: 'Medium', scenicValue: 95 },
+  'Public Market Area': { densityScore: 85, throughputScore: 30, distance: 1.0, environment: 'Outdoor', isPaid: false, seatingCapacity: 'Low', scenicValue: 50 },
 };
 
 function App() {
@@ -16,10 +17,13 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // User Preferences State
-  const [maxTravelTime, setMaxTravelTime] = useState(15);
-  const [environments, setEnvironments] = useState({
-    Indoor: true,
-    Outdoor: true
+  const [userPrefs, setUserPrefs] = useState({
+    maxTravelTime: 15,
+    environments: { Indoor: true, Outdoor: true },
+    travelMode: 'On Foot',
+    groupSize: 1,
+    navigationGoal: 'Efficiency',
+    includePaid: false,
   });
   
   // Redirection State
@@ -28,32 +32,8 @@ function App() {
   const handleRedirect = () => {
     if (!selectedLocation || !MOCK_DATA[selectedLocation.name]) return;
     
-    // 1. Filter based on preferences and exclude current location
-    const alternatives = Object.entries(MOCK_DATA)
-      .filter(([name]) => name !== selectedLocation.name)
-      .filter(([_, data]) => data.travelTime <= maxTravelTime)
-      .filter(([_, data]) => environments[data.environment])
-      .map(([name, data]) => ({ name, ...data }));
-      
-    // 2. Mock TOPSIS: Find the highest throughput score among valid alternatives
-    if (alternatives.length === 0) {
-      setActiveRedirection({ error: 'No matching alternatives found based on preferences.' });
-      return;
-    }
-
-    const bestAlternative = alternatives.reduce((best, current) => 
-      current.throughputScore > best.throughputScore ? current : best
-    );
-    
-    const efficiencyDiff = Math.round(bestAlternative.throughputScore - MOCK_DATA[selectedLocation.name].throughputScore);
-    const reasonText = efficiencyDiff > 0 
-      ? `Due to ${efficiencyDiff}% higher throughput efficiency`
-      : `Optimal available match based on preferences`;
-
-    setActiveRedirection({
-      ...bestAlternative,
-      reason: reasonText
-    });
+    const result = calculateRedirection(selectedLocation.name, MOCK_DATA, userPrefs);
+    setActiveRedirection(result);
   };
 
   // Reset redirection if user clicks a new marker
@@ -62,8 +42,15 @@ function App() {
     setActiveRedirection(null);
   };
 
+  const updatePref = (key, value) => {
+    setUserPrefs(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleEnvironmentToggle = (env) => {
-    setEnvironments(prev => ({ ...prev, [env]: !prev[env] }));
+    setUserPrefs(prev => ({
+      ...prev,
+      environments: { ...prev.environments, [env]: !prev.environments[env] }
+    }));
   };
 
   return (
@@ -121,21 +108,74 @@ function App() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                   <h3 className="font-semibold text-slate-700">Max Travel Time</h3>
-                  <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{maxTravelTime} mins</span>
+                  <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{userPrefs.maxTravelTime} mins</span>
                 </div>
                 <input 
                   type="range" 
                   min="5" 
                   max="20" 
                   step="1"
-                  value={maxTravelTime}
-                  onChange={(e) => setMaxTravelTime(Number(e.target.value))}
+                  value={userPrefs.maxTravelTime}
+                  onChange={(e) => updatePref('maxTravelTime', Number(e.target.value))}
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
                 <div className="flex justify-between text-xs text-slate-400 font-medium">
                   <span>5m</span>
                   <span>20m</span>
                 </div>
+              </div>
+
+              {/* Travel Mode Dropdown */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 border-b border-slate-200 pb-2">Travel Mode</h3>
+                <div className="relative">
+                  <select 
+                    value={userPrefs.travelMode}
+                    onChange={(e) => updatePref('travelMode', e.target.value)}
+                    className="w-full appearance-none bg-white border border-slate-300 text-slate-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer font-medium"
+                  >
+                    <option value="On Foot">On Foot</option>
+                    <option value="By Vehicle">By Vehicle</option>
+                    <option value="Commuting">Commuting</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Goal Dropdown */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 border-b border-slate-200 pb-2">Navigation Goal</h3>
+                <div className="relative">
+                  <select 
+                    value={userPrefs.navigationGoal}
+                    onChange={(e) => updatePref('navigationGoal', e.target.value)}
+                    className="w-full appearance-none bg-white border border-slate-300 text-slate-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer font-medium"
+                  >
+                    <option value="Efficiency">Efficiency (Avoid Crowds)</option>
+                    <option value="Leisure">Leisure (Scenic Routes)</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group Size Input */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 border-b border-slate-200 pb-2">Group Size</h3>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={userPrefs.groupSize}
+                  onChange={(e) => updatePref('groupSize', Number(e.target.value))}
+                  className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm font-medium"
+                />
               </div>
 
               {/* Environment Checkboxes */}
@@ -147,7 +187,7 @@ function App() {
                       <div className="relative flex items-center justify-center">
                         <input 
                           type="checkbox" 
-                          checked={environments[env]}
+                          checked={userPrefs.environments[env]}
                           onChange={() => handleEnvironmentToggle(env)}
                           className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
                         />
@@ -158,6 +198,22 @@ function App() {
                       <span className="font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{env} Spaces</span>
                     </label>
                   ))}
+                  
+                  {/* Include Paid Checkbox */}
+                  <label className="flex items-center gap-3 cursor-pointer group mt-2 pt-2 border-t border-slate-100">
+                    <div className="relative flex items-center justify-center">
+                      <input 
+                        type="checkbox" 
+                        checked={userPrefs.includePaid}
+                        onChange={(e) => updatePref('includePaid', e.target.checked)}
+                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                      />
+                      <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Include Paid</span>
+                  </label>
                 </div>
               </div>
 
@@ -183,6 +239,7 @@ function App() {
                   </p>
                   <div className="text-yellow-900 text-xs space-y-2 leading-relaxed">
                     <p><span className="font-semibold text-yellow-700">Target:</span> {activeRedirection.name}</p>
+                    <p><span className="font-semibold text-yellow-700">Estimated time:</span> {activeRedirection.estimatedTime} mins (via {activeRedirection.travelMode})</p>
                     <p className="text-yellow-600 italic mt-2 bg-yellow-100/50 p-2 rounded-lg inline-block">({activeRedirection.reason})</p>
                   </div>
                 </div>
