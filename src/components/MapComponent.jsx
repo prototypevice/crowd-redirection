@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { APIProvider, Map, useMap, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps';
 
 const STUDY_SITES = [
-  { name: 'Session Road', lat: 16.4145, lng: 120.5965 },
-  { name: 'Burnham Park', lat: 16.4083, lng: 120.5885 },
-  { name: 'SM City Baguio', lat: 16.4127, lng: 120.5962 },
+  { name: 'Burnham Park', lat: 16.41282669, lng: 120.5925909 },
+  { name: 'Session Road', lat: 16.41240812, lng: 120.59762317 },
+  { name: 'SM City Baguio', lat: 16.40890863, lng: 120.5993898 },
 ];
 
 const MapContent = ({ setIsLoaded }) => {
@@ -30,7 +30,7 @@ const MapContent = ({ setIsLoaded }) => {
   return null;
 };
 
-const MapComponent = () => {
+const MapComponent = ({ onLocationSelect }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
@@ -84,19 +84,6 @@ const MapComponent = () => {
             pointer-events: none;
           }
         }
-        .custom-marker {
-          width: 16px;
-          height: 16px;
-          background-color: #3b82f6;
-          border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
-          cursor: pointer;
-          transition: transform 0.2s ease;
-        }
-        .custom-marker:hover {
-          transform: scale(1.2);
-        }
       `}</style>
 
       <APIProvider apiKey={apiKey}>
@@ -114,18 +101,24 @@ const MapComponent = () => {
             <AdvancedMarker
               key={site.name}
               position={{ lat: site.lat, lng: site.lng }}
-              onClick={() => setSelectedSite(site)}
+              onClick={() => {
+                setSelectedSite(site);
+                if (onLocationSelect) onLocationSelect(site);
+              }}
               onMouseEnter={() => setSelectedSite(site)}
               onMouseLeave={() => setSelectedSite(null)}
             >
-              <div className="custom-marker" />
+              <div className="w-5 h-5 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125" />
             </AdvancedMarker>
           ))}
 
           {selectedSite && (
             <InfoWindow
               position={{ lat: selectedSite.lat, lng: selectedSite.lng }}
-              onCloseClick={() => setSelectedSite(null)}
+              onCloseClick={() => {
+                setSelectedSite(null);
+                if (onLocationSelect) onLocationSelect(null);
+              }}
               pixelOffset={[0, -12]}
             >
               <div className="p-3 text-sm min-w-[120px] text-center">
