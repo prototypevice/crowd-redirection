@@ -3,59 +3,84 @@ import MapComponent from './components/MapComponent';
 import './App.css';
 
 const MOCK_DATA = {
-  'SM City Baguio': { density: 60, score: 0.72 },
-  'Burnham Park': { density: 75, score: 0.45 },
-  'Session Road': { density: 90, score: 0.21 },
-  'Baguio Cathedral': { density: 40, score: 0.85 },
-  'Wright Park': { density: 25, score: 0.95 },
-  'Public Market Area': { density: 85, score: 0.30 },
-};
-
-const calculateRedirection = (currentLocationName) => {
-  if (!currentLocationName || !MOCK_DATA[currentLocationName]) return null;
-  
-  const alternatives = Object.entries(MOCK_DATA)
-    .filter(([name]) => name !== currentLocationName)
-    .map(([name, data]) => ({ name, ...data }));
-    
-  if (alternatives.length === 0) return null;
-
-  const bestAlternative = alternatives.reduce((best, current) => 
-    current.score > best.score ? current : best
-  );
-  
-  const efficiencyDiff = Math.round((bestAlternative.score - MOCK_DATA[currentLocationName].score) * 100);
-  
-  return {
-    ...bestAlternative,
-    reason: `Due to ${efficiencyDiff}% higher throughput efficiency`
-  };
+  'SM City Baguio': { densityScore: 60, throughputScore: 72, travelTime: 5, environment: 'Indoor' },
+  'Burnham Park': { densityScore: 75, throughputScore: 45, travelTime: 12, environment: 'Outdoor' },
+  'Session Road': { densityScore: 90, throughputScore: 21, travelTime: 8, environment: 'Outdoor' },
+  'Baguio Cathedral': { densityScore: 40, throughputScore: 85, travelTime: 15, environment: 'Indoor' },
+  'Wright Park': { densityScore: 25, throughputScore: 95, travelTime: 20, environment: 'Outdoor' },
+  'Public Market Area': { densityScore: 85, throughputScore: 30, travelTime: 10, environment: 'Outdoor' },
 };
 
 function App() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // User Preferences State
+  const [maxTravelTime, setMaxTravelTime] = useState(15);
+  const [environments, setEnvironments] = useState({
+    Indoor: true,
+    Outdoor: true
+  });
+  
+  // Redirection State
+  const [activeRedirection, setActiveRedirection] = useState(null);
 
-  const recommendedLocation = selectedLocation ? calculateRedirection(selectedLocation.name) : null;
+  const handleRedirect = () => {
+    if (!selectedLocation || !MOCK_DATA[selectedLocation.name]) return;
+    
+    // 1. Filter based on preferences and exclude current location
+    const alternatives = Object.entries(MOCK_DATA)
+      .filter(([name]) => name !== selectedLocation.name)
+      .filter(([_, data]) => data.travelTime <= maxTravelTime)
+      .filter(([_, data]) => environments[data.environment])
+      .map(([name, data]) => ({ name, ...data }));
+      
+    // 2. Mock TOPSIS: Find the highest throughput score among valid alternatives
+    if (alternatives.length === 0) {
+      setActiveRedirection({ error: 'No matching alternatives found based on preferences.' });
+      return;
+    }
+
+    const bestAlternative = alternatives.reduce((best, current) => 
+      current.throughputScore > best.throughputScore ? current : best
+    );
+    
+    const efficiencyDiff = Math.round(bestAlternative.throughputScore - MOCK_DATA[selectedLocation.name].throughputScore);
+    const reasonText = efficiencyDiff > 0 
+      ? `Due to ${efficiencyDiff}% higher throughput efficiency`
+      : `Optimal available match based on preferences`;
+
+    setActiveRedirection({
+      ...bestAlternative,
+      reason: reasonText
+    });
+  };
+
+  // Reset redirection if user clicks a new marker
+  const handleLocationSelect = (loc) => {
+    setSelectedLocation(loc);
+    setActiveRedirection(null);
+  };
+
+  const handleEnvironmentToggle = (env) => {
+    setEnvironments(prev => ({ ...prev, [env]: !prev[env] }));
+  };
 
   return (
     <>
-      {/* Canvas Background */}
       <div className="min-h-screen bg-slate-50 p-8 flex items-start px-16 overflow-x-hidden">
 
         {/* Card 1 - Left Side (Title & Map) */}
         <div className="flex flex-col flex-grow h-[800px] gap-4 transition-all duration-500 ease-in-out min-w-0">
-          {/* Header */}
           <div className="flex justify-between items-center">
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Crowd Monitoring Dashboard</h1>
             
-            {/* Open Sidebar Button */}
             {!isSidebarOpen && (
               <button 
                 onClick={() => setIsSidebarOpen(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl shadow-sm hover:bg-slate-50 transition-colors animate-fade-in"
               >
-                <span>Show Analytics</span>
+                <span>Show Preferences</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
@@ -63,19 +88,18 @@ function App() {
             )}
           </div>
 
-          {/* Map Container - Strict Clipping */}
           <div className="flex-grow bg-white rounded-3xl shadow-lg overflow-hidden relative">
             <MapComponent 
-              onLocationSelect={setSelectedLocation} 
-              recommendedLocationName={recommendedLocation?.name} 
+              onLocationSelect={handleLocationSelect} 
+              activeRedirection={activeRedirection} 
+              mockData={MOCK_DATA}
             />
           </div>
         </div>
 
-        {/* Card 2 - Right Side (Analytics Sidebar) */}
+        {/* Card 2 - Right Side (User Preferences Sidebar) */}
         <div className={`h-[800px] bg-white rounded-3xl shadow-lg flex flex-col flex-shrink-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'w-80 ml-8 opacity-100' : 'w-0 ml-0 opacity-0'}`}>
           
-          {/* Close Button - Floating Anchor on the left edge */}
           <button 
             onClick={() => setIsSidebarOpen(false)}
             className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-md text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors z-50"
@@ -86,63 +110,99 @@ function App() {
             </svg>
           </button>
 
-          {/* Fixed Width Inner Wrapper - Prevents text squishing during width animation */}
           <div className="w-80 h-full p-6 flex flex-col relative">
-
-            {/* Sidebar Title */}
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">System Analytics</h2>
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-green-100 rounded-full">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Live</span>
-              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">User Preferences</h2>
             </div>
 
-            {/* Sidebar Content */}
-            <div className="text-slate-600 text-sm space-y-6 overflow-y-auto pr-2 pb-4">
+            <div className="text-slate-600 text-sm space-y-8 flex-grow overflow-y-auto pr-2">
+              
+              {/* Travel Time Slider */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-slate-700 border-b border-slate-200 pb-2">Area Density</h3>
-                
-                {Object.entries(MOCK_DATA).map(([loc, data]) => {
-                  const fillPercentage = data.density;
-                  const isSelected = selectedLocation?.name === loc;
-                  
-                  return (
-                    <div key={loc} className={`p-3 rounded-xl transition-colors duration-300 space-y-2 ${isSelected ? 'bg-blue-50 border border-blue-100 shadow-sm' : 'bg-slate-50 border border-transparent'}`}>
-                      <div className="flex justify-between">
-                        <p className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>{loc}</p>
-                        <span className={`text-xs font-bold transition-opacity ${isSelected ? 'text-blue-700 opacity-100' : 'text-slate-400 opacity-0'}`}>{fillPercentage}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 ease-out ${isSelected ? 'bg-blue-500' : 'bg-slate-300'}`}
-                          style={{ width: `${isSelected ? fillPercentage : 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <h3 className="font-semibold text-slate-700">Max Travel Time</h3>
+                  <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{maxTravelTime} mins</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="20" 
+                  step="1"
+                  value={maxTravelTime}
+                  onChange={(e) => setMaxTravelTime(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-slate-400 font-medium">
+                  <span>5m</span>
+                  <span>20m</span>
+                </div>
               </div>
 
-              {selectedLocation && recommendedLocation ? (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mt-8 shadow-sm">
+              {/* Environment Checkboxes */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 border-b border-slate-200 pb-2">Environment</h3>
+                <div className="space-y-3">
+                  {['Indoor', 'Outdoor'].map((env) => (
+                    <label key={env} className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input 
+                          type="checkbox" 
+                          checked={environments[env]}
+                          onChange={() => handleEnvironmentToggle(env)}
+                          className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                        />
+                        <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{env} Spaces</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status/Error Messages */}
+              {activeRedirection?.error && (
+                <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-100 font-medium text-center">
+                  {activeRedirection.error}
+                </div>
+              )}
+              
+              {!selectedLocation && (
+                <div className="p-4 bg-slate-50 text-slate-500 text-xs rounded-xl text-center border border-slate-100">
+                  Select a starting location on the map to calculate redirection.
+                </div>
+              )}
+
+              {/* Current Redirection Suggestion */}
+              {activeRedirection && !activeRedirection.error && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm">
                   <p className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                    Redirection Suggestion
+                    Redirection Active
                   </p>
                   <div className="text-yellow-900 text-xs space-y-2 leading-relaxed">
-                    <p><span className="font-semibold text-yellow-700">Current Location:</span> {selectedLocation.name}</p>
-                    <p><span className="font-semibold text-yellow-700">Redirection Recommended:</span> {recommendedLocation.name}</p>
-                    <p className="text-yellow-600 italic mt-2 bg-yellow-100/50 p-2 rounded-lg inline-block">({recommendedLocation.reason})</p>
+                    <p><span className="font-semibold text-yellow-700">Target:</span> {activeRedirection.name}</p>
+                    <p className="text-yellow-600 italic mt-2 bg-yellow-100/50 p-2 rounded-lg inline-block">({activeRedirection.reason})</p>
                   </div>
-                </div>
-              ) : (
-                <div className="p-4 bg-slate-50 rounded-xl mt-8">
-                  <p className="font-semibold text-slate-700">📍 Metrics</p>
-                  <p className="text-slate-500 text-xs mt-1">Select a location on the map to view live density data.</p>
                 </div>
               )}
             </div>
+
+            {/* Redirect Action Button */}
+            <div className="mt-6 pt-4 border-t border-slate-100">
+              <button 
+                onClick={handleRedirect}
+                disabled={!selectedLocation}
+                className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+                </svg>
+                Redirect Me Now
+              </button>
+            </div>
+
           </div>
         </div>
       </div>

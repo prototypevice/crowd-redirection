@@ -20,7 +20,7 @@ const getMarkerColor = (category) => {
   }
 };
 
-const MapContent = ({ setIsLoaded, selectedSite }) => {
+const MapContent = ({ setIsLoaded, selectedSite, activeRedirection }) => {
   const map = useMap();
   const boundsAppliedRef = useRef(false);
 
@@ -41,16 +41,20 @@ const MapContent = ({ setIsLoaded, selectedSite }) => {
   }, [map, setIsLoaded]);
 
   useEffect(() => {
-    if (!map || !selectedSite) return;
+    if (!map) return;
     
-    // Smoothly pan to the selected location
-    map.panTo({ lat: selectedSite.lat, lng: selectedSite.lng });
-  }, [map, selectedSite]);
+    // Smoothly pan to the redirection target, or just the selected site
+    if (activeRedirection && !activeRedirection.error) {
+      map.panTo({ lat: activeRedirection.lat, lng: activeRedirection.lng });
+    } else if (selectedSite) {
+      map.panTo({ lat: selectedSite.lat, lng: selectedSite.lng });
+    }
+  }, [map, selectedSite, activeRedirection]);
 
   return null;
 };
 
-const MapComponent = ({ onLocationSelect, recommendedLocationName }) => {
+const MapComponent = ({ onLocationSelect, activeRedirection, mockData }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
@@ -118,10 +122,10 @@ const MapComponent = ({ onLocationSelect, recommendedLocationName }) => {
           tiltControl={true}
           rotateControl={true}
         >
-          <MapContent setIsLoaded={setIsLoaded} selectedSite={selectedSite} />
+          <MapContent setIsLoaded={setIsLoaded} selectedSite={selectedSite} activeRedirection={activeRedirection} />
           
           {STUDY_SITES.map((site) => {
-            const isRecommended = site.name === recommendedLocationName;
+            const isRecommended = activeRedirection && !activeRedirection.error && site.name === activeRedirection.name;
             
             const markerClass = isRecommended 
               ? "w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-[0_0_15px_rgba(250,204,21,0.8)] cursor-pointer transition-transform duration-200 animate-pulse z-10"
@@ -155,11 +159,26 @@ const MapComponent = ({ onLocationSelect, recommendedLocationName }) => {
               pixelOffset={[0, -32]}
               disableAutoPan={true}
             >
-              <div className="p-3 text-sm min-w-[120px] text-center">
-                <h3 className="font-extrabold text-slate-800 mb-1">{activeSite.name}</h3>
-                <span className="inline-block px-3 py-1 mt-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full border border-emerald-200 shadow-sm">
-                  ● Status: Active
-                </span>
+              <div className="p-4 text-sm min-w-[180px] text-center">
+                <h3 className="font-extrabold text-slate-800 mb-2">{activeSite.name}</h3>
+                
+                {mockData && mockData[activeSite.name] && (
+                  <div className="flex flex-col gap-1.5 mb-3">
+                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
+                      <span className="text-xs text-slate-500 font-semibold">Density:</span>
+                      <span className="text-xs font-bold text-blue-600">{mockData[activeSite.name].densityScore}/100</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
+                      <span className="text-xs text-slate-500 font-semibold">Throughput:</span>
+                      <span className="text-xs font-bold text-orange-600">{mockData[activeSite.name].throughputScore}/100</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="inline-flex px-3 py-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full border border-emerald-200 shadow-sm items-center justify-center gap-1.5 mx-auto w-max">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                  Status: Active
+                </div>
               </div>
             </InfoWindow>
           )}
