@@ -50,7 +50,7 @@ const MapContent = ({ setIsLoaded, selectedSite }) => {
   return null;
 };
 
-const MapComponent = ({ onLocationSelect }) => {
+const MapComponent = ({ onLocationSelect, recommendedLocationName }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
@@ -120,20 +120,29 @@ const MapComponent = ({ onLocationSelect }) => {
         >
           <MapContent setIsLoaded={setIsLoaded} selectedSite={selectedSite} />
           
-          {STUDY_SITES.map((site) => (
-            <AdvancedMarker
-              key={site.id}
-              position={{ lat: site.lat, lng: site.lng }}
-              onClick={() => {
-                setSelectedSite(site);
-                if (onLocationSelect) onLocationSelect(site);
-              }}
-              onMouseEnter={() => setHoveredSite(site)}
-              onMouseLeave={() => setHoveredSite(null)}
-            >
-              <div className={`w-5 h-5 ${getMarkerColor(site.category)} rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125`} />
-            </AdvancedMarker>
-          ))}
+          {STUDY_SITES.map((site) => {
+            const isRecommended = site.name === recommendedLocationName;
+            
+            const markerClass = isRecommended 
+              ? "w-6 h-6 bg-yellow-400 rounded-full border-2 border-white shadow-[0_0_15px_rgba(250,204,21,0.8)] cursor-pointer transition-transform duration-200 animate-pulse z-10"
+              : `w-5 h-5 ${getMarkerColor(site.category)} rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125`;
+
+            return (
+              <AdvancedMarker
+                key={site.id}
+                position={{ lat: site.lat, lng: site.lng }}
+                onClick={() => {
+                  setSelectedSite(site);
+                  if (onLocationSelect) onLocationSelect(site);
+                }}
+                onMouseEnter={() => setHoveredSite(site)}
+                onMouseLeave={() => setHoveredSite(null)}
+                zIndex={isRecommended ? 100 : undefined}
+              >
+                <div className={markerClass} />
+              </AdvancedMarker>
+            );
+          })}
 
           {activeSite && (
             <InfoWindow
