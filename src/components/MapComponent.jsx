@@ -2,10 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import { APIProvider, Map, useMap, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps';
 
 const STUDY_SITES = [
-  { name: 'Burnham Park', lat: 16.41282669, lng: 120.5925909 },
-  { name: 'Session Road', lat: 16.41240812, lng: 120.59762317 },
-  { name: 'SM City Baguio', lat: 16.40890863, lng: 120.5993898 },
+  { id: 1, name: 'SM City Baguio', lat: 16.40890863, lng: 120.5993898, category: 'Core' },
+  { id: 2, name: 'Burnham Park', lat: 16.41282669, lng: 120.5925909, category: 'Core' },
+  { id: 3, name: 'Session Road', lat: 16.41240812, lng: 120.59762317, category: 'Core' },
+  { id: 4, name: 'Baguio Cathedral', lat: 16.41284103, lng: 120.59851821, category: 'Gateway' },
+  { id: 5, name: 'Wright Park', lat: 16.41581538, lng: 120.61725983, category: 'Recreational' },
+  { id: 6, name: 'Public Market Area', lat: 16.41492654, lng: 120.59560095, category: 'Throughput' },
 ];
+
+const getMarkerColor = (category) => {
+  switch(category) {
+    case 'Core': return 'bg-blue-600';
+    case 'Gateway': return 'bg-purple-600';
+    case 'Recreational': return 'bg-green-600';
+    case 'Throughput': return 'bg-orange-600';
+    default: return 'bg-blue-600';
+  }
+};
 
 const MapContent = ({ setIsLoaded, selectedSite }) => {
   const map = useMap();
@@ -30,9 +43,8 @@ const MapContent = ({ setIsLoaded, selectedSite }) => {
   useEffect(() => {
     if (!map || !selectedSite) return;
     
-    // Smoothly pan to the selected location and slightly zoom in
+    // Smoothly pan to the selected location
     map.panTo({ lat: selectedSite.lat, lng: selectedSite.lng });
-    map.setZoom(17);
   }, [map, selectedSite]);
 
   return null;
@@ -110,7 +122,7 @@ const MapComponent = ({ onLocationSelect }) => {
           
           {STUDY_SITES.map((site) => (
             <AdvancedMarker
-              key={site.name}
+              key={site.id}
               position={{ lat: site.lat, lng: site.lng }}
               onClick={() => {
                 setSelectedSite(site);
@@ -119,7 +131,7 @@ const MapComponent = ({ onLocationSelect }) => {
               onMouseEnter={() => setHoveredSite(site)}
               onMouseLeave={() => setHoveredSite(null)}
             >
-              <div className="w-5 h-5 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125" />
+              <div className={`w-5 h-5 ${getMarkerColor(site.category)} rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125`} />
             </AdvancedMarker>
           ))}
 

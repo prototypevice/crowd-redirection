@@ -3,9 +3,12 @@ import MapComponent from './components/MapComponent';
 import './App.css';
 
 const DENSITY_DATA = {
+  'SM City Baguio': 60,
   'Burnham Park': 75,
   'Session Road': 90,
-  'SM City Baguio': 60,
+  'Baguio Cathedral': 40,
+  'Wright Park': 25,
+  'Public Market Area': 85,
 };
 
 function App() {
