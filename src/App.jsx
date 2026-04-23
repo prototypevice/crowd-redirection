@@ -3,17 +3,19 @@ import './App.css';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50">
       {/* Header Section */}
-      <div className="text-center py-12 px-6">
-        <h1 className="text-5xl font-bold mb-2">Crowd Monitoring Dashboard</h1>
-        <p className="text-slate-400 text-lg">Real-time crowd tracking for Baguio City</p>
-      </div>
+      <header className="bg-white shadow-sm">
+        <div className="text-center py-8 px-6">
+          <h1 className="text-5xl font-bold mb-2 text-slate-900">Crowd Monitoring Dashboard</h1>
+          <p className="text-slate-600 text-lg">Real-time crowd tracking for Baguio City</p>
+        </div>
+      </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 pb-12">
-        {/* Simple Map Card */}
-        <div className="bg-slate-800 rounded-lg shadow-2xl overflow-hidden border border-slate-700 hover:border-slate-600 transition-all">
+      <main className="flex justify-center py-12 px-6">
+        {/* Map Card - Fixed width, centered, with proper rounded corners */}
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300" style={{ width: '600px' }}>
           <MapComponent />
         </div>
       </main>

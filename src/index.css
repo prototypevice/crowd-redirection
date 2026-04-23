@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -14,8 +14,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #020617;
-  color: #f1f5f9;
+  background-color: #f9fafb;
+  color: #1f2937;
 }
 
 * {
@@ -38,16 +38,16 @@ body,
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #f3f4f6;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #d1d5db;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #9ca3af;
 }
 
 /* Ensure proper height */
