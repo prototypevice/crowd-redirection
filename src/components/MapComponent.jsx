@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, useMap, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps';
 
 const STUDY_SITES = [
   { name: 'Session Road', lat: 16.4145, lng: 120.5965 },
@@ -24,7 +24,7 @@ const MapContent = ({ setIsLoaded }) => {
 
     setTimeout(() => {
       setIsLoaded(true);
-    }, 2500);
+    }, 4500);
   }, [map, setIsLoaded]);
 
   return null;
@@ -33,6 +33,7 @@ const MapContent = ({ setIsLoaded }) => {
 const MapComponent = () => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [isLoaded, setIsLoaded] = useState(false);
+  const [selectedSite, setSelectedSite] = useState(null);
 
   if (!apiKey) {
     return (
@@ -43,7 +44,7 @@ const MapComponent = () => {
   }
 
   return (
-    <div className="w-full h-[600px] relative overflow-hidden rounded-3xl" style={{ backgroundColor: '#e5e7eb' }}>
+    <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: '#e5e7eb' }}>
       {!isLoaded && (
         <div style={{
           position: 'absolute',
@@ -53,7 +54,8 @@ const MapComponent = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999
+          zIndex: 9999,
+          animation: 'fadeOutOverlay 0.6s ease-out forwards'
         }}>
           <div style={{
             width: '48px',
@@ -72,6 +74,29 @@ const MapComponent = () => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes fadeOutOverlay {
+          0% {
+            opacity: 1;
+            pointer-events: auto;
+          }
+          100% {
+            opacity: 0;
+            pointer-events: none;
+          }
+        }
+        .custom-marker {
+          width: 16px;
+          height: 16px;
+          background-color: #3b82f6;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        .custom-marker:hover {
+          transform: scale(1.2);
+        }
       `}</style>
 
       <APIProvider apiKey={apiKey}>
@@ -84,6 +109,33 @@ const MapComponent = () => {
           rotateControl={true}
         >
           <MapContent setIsLoaded={setIsLoaded} />
+          
+          {STUDY_SITES.map((site) => (
+            <AdvancedMarker
+              key={site.name}
+              position={{ lat: site.lat, lng: site.lng }}
+              onClick={() => setSelectedSite(site)}
+              onMouseEnter={() => setSelectedSite(site)}
+              onMouseLeave={() => setSelectedSite(null)}
+            >
+              <div className="custom-marker" />
+            </AdvancedMarker>
+          ))}
+
+          {selectedSite && (
+            <InfoWindow
+              position={{ lat: selectedSite.lat, lng: selectedSite.lng }}
+              onCloseClick={() => setSelectedSite(null)}
+              pixelOffset={[0, -12]}
+            >
+              <div className="p-3 text-sm min-w-[120px] text-center">
+                <h3 className="font-extrabold text-slate-800 mb-1">{selectedSite.name}</h3>
+                <span className="inline-block px-3 py-1 mt-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full border border-emerald-200 shadow-sm">
+                  ● Status: Active
+                </span>
+              </div>
+            </InfoWindow>
+          )}
         </Map>
       </APIProvider>
     </div>
