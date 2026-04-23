@@ -7,7 +7,7 @@ const STUDY_SITES = [
   { name: 'SM City Baguio', lat: 16.40890863, lng: 120.5993898 },
 ];
 
-const MapContent = ({ setIsLoaded }) => {
+const MapContent = ({ setIsLoaded, selectedSite }) => {
   const map = useMap();
   const boundsAppliedRef = useRef(false);
 
@@ -27,6 +27,14 @@ const MapContent = ({ setIsLoaded }) => {
     }, 4500);
   }, [map, setIsLoaded]);
 
+  useEffect(() => {
+    if (!map || !selectedSite) return;
+    
+    // Smoothly pan to the selected location and slightly zoom in
+    map.panTo({ lat: selectedSite.lat, lng: selectedSite.lng });
+    map.setZoom(17);
+  }, [map, selectedSite]);
+
   return null;
 };
 
@@ -34,6 +42,7 @@ const MapComponent = ({ onLocationSelect }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+  const [hoveredSite, setHoveredSite] = useState(null);
 
   if (!apiKey) {
     return (
@@ -42,6 +51,8 @@ const MapComponent = ({ onLocationSelect }) => {
       </div>
     );
   }
+
+  const activeSite = hoveredSite || selectedSite;
 
   return (
     <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: '#e5e7eb' }}>
@@ -95,7 +106,7 @@ const MapComponent = ({ onLocationSelect }) => {
           tiltControl={true}
           rotateControl={true}
         >
-          <MapContent setIsLoaded={setIsLoaded} />
+          <MapContent setIsLoaded={setIsLoaded} selectedSite={selectedSite} />
           
           {STUDY_SITES.map((site) => (
             <AdvancedMarker
@@ -105,24 +116,26 @@ const MapComponent = ({ onLocationSelect }) => {
                 setSelectedSite(site);
                 if (onLocationSelect) onLocationSelect(site);
               }}
-              onMouseEnter={() => setSelectedSite(site)}
-              onMouseLeave={() => setSelectedSite(null)}
+              onMouseEnter={() => setHoveredSite(site)}
+              onMouseLeave={() => setHoveredSite(null)}
             >
               <div className="w-5 h-5 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-125" />
             </AdvancedMarker>
           ))}
 
-          {selectedSite && (
+          {activeSite && (
             <InfoWindow
-              position={{ lat: selectedSite.lat, lng: selectedSite.lng }}
+              position={{ lat: activeSite.lat, lng: activeSite.lng }}
               onCloseClick={() => {
                 setSelectedSite(null);
+                setHoveredSite(null);
                 if (onLocationSelect) onLocationSelect(null);
               }}
-              pixelOffset={[0, -12]}
+              pixelOffset={[0, -32]}
+              disableAutoPan={true}
             >
               <div className="p-3 text-sm min-w-[120px] text-center">
-                <h3 className="font-extrabold text-slate-800 mb-1">{selectedSite.name}</h3>
+                <h3 className="font-extrabold text-slate-800 mb-1">{activeSite.name}</h3>
                 <span className="inline-block px-3 py-1 mt-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full border border-emerald-200 shadow-sm">
                   ● Status: Active
                 </span>
