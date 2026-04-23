@@ -17,6 +17,10 @@ export const calculateTravelTime = (distanceKm, mode) => {
   return Math.round((distanceKm / speed) * 60);
 };
 
+export const normalize = (value, min = 0, max = 100) => {
+  return (value - min) / (max - min);
+};
+
 /**
  * Executes a mock TOPSIS multi-criteria decision algorithm to find the optimal target.
  * @param {string} currentLocationName - The name of the currently selected location.
@@ -43,24 +47,23 @@ export const calculateRedirection = (currentLocationName, sites, userPrefs) => {
   }
 
   // 2. Mock TOPSIS Scoring phase
-  // We'll calculate a 'finalScore' for each alternative.
-  alternatives.forEach(alt => {
-    // Base normalization (mocking criteria weights)
-    let densityScore = alt.densityScore / 100; // lower density is generally better, but we mock it simply
-    let throughputScore = alt.throughputScore / 100;
-    let scenicValue = alt.scenicValue / 100;
+  // Find max distance to normalize dynamically
+  const maxDistance = Math.max(...alternatives.map(a => a.distance), 1);
 
-    // We assume higher score is better for this mock. 
-    // Invert density: higher density -> lower score contribution.
-    let invDensity = 1 - densityScore;
+  alternatives.forEach(alt => {
+    let throughputScore = normalize(alt.throughputScore);
+    let scenicValue = normalize(alt.scenicValue);
+    
+    // Invert distance: closer distance -> higher score contribution
+    let invDistanceScore = 1 - normalize(alt.distance, 0, maxDistance);
 
     let finalScore = 0;
 
     // Dynamic Weighting based on navigationGoal
     if (userPrefs.navigationGoal === 'Efficiency') {
-      finalScore = (invDensity * 0.2) + (throughputScore * 0.7) + (scenicValue * 0.1);
+      finalScore = (throughputScore * 0.7) + (invDistanceScore * 0.3);
     } else { // Leisure
-      finalScore = (invDensity * 0.4) + (throughputScore * 0.1) + (scenicValue * 0.5);
+      finalScore = (scenicValue * 0.7) + (invDistanceScore * 0.3);
     }
 
     // Penalties
