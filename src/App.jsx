@@ -28,18 +28,25 @@ function App() {
   
   // Redirection State
   const [activeRedirection, setActiveRedirection] = useState(null);
+  const [results, setResults] = useState([]);
+  const [viewState, setViewState] = useState('preferences');
 
   const handleRedirect = () => {
     if (!selectedLocation || !MOCK_DATA[selectedLocation.name]) return;
     
-    const result = calculateRedirection(selectedLocation.name, MOCK_DATA, userPrefs);
-    setActiveRedirection(result);
+    const data = calculateRedirection(selectedLocation.name, MOCK_DATA, userPrefs);
+    console.log(data);
+    setResults(data);
+    setActiveRedirection(data.length > 0 ? data[0] : null);
+    setViewState('results');
   };
 
   // Reset redirection if user clicks a new marker
   const handleLocationSelect = (loc) => {
     setSelectedLocation(loc);
     setActiveRedirection(null);
+    setResults([]);
+    setViewState('preferences');
   };
 
   const updatePref = (key, value) => {
@@ -85,11 +92,11 @@ function App() {
         </div>
 
         {/* Card 2 - Right Side (User Preferences Sidebar) */}
-        <div className={`h-[800px] bg-white rounded-3xl shadow-lg flex flex-col flex-shrink-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'w-80 ml-8 opacity-100' : 'w-0 ml-0 opacity-0'}`}>
+        <div className={`h-[800px] bg-white rounded-3xl shadow-lg flex flex-col flex-shrink-0 relative transition-all duration-500 ease-in-out overflow-visible ${isSidebarOpen ? 'w-80 ml-8 opacity-100' : 'w-0 ml-0 opacity-0'}`}>
           
           <button 
             onClick={() => setIsSidebarOpen(false)}
-            className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-md text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors z-50"
+            className="absolute top-1/2 -left-4 z-50 transform -translate-y-1/2 p-1.5 bg-white rounded-full shadow-md text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             title="Close Sidebar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
@@ -97,14 +104,18 @@ function App() {
             </svg>
           </button>
 
-          <div className="w-80 h-full p-6 flex flex-col relative">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">User Preferences</h2>
+          <div className="w-80 h-full flex flex-col relative overflow-hidden">
+            <div className="flex justify-between items-center px-6 pt-6 mb-4 flex-shrink-0">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                {viewState === 'preferences' ? 'User Preferences' : 'Recommendations'}
+              </h2>
             </div>
 
-            <div className="text-slate-600 text-sm space-y-8 flex-grow overflow-y-auto pr-2">
+            <div className="text-slate-600 text-sm flex-1 overflow-y-auto pl-6 pr-6 pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent hover:scrollbar-thumb-slate-400">
               
-              {/* Travel Time Slider */}
+              {viewState === 'preferences' ? (
+                <div className="space-y-8 animate-fade-in">
+                  {/* Travel Time Slider */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                   <h3 className="font-semibold text-slate-700">Max Travel Time</h3>
@@ -174,7 +185,7 @@ function App() {
                   min="1"
                   value={userPrefs.groupSize}
                   onChange={(e) => updatePref('groupSize', Number(e.target.value))}
-                  className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm font-medium"
+                  className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm font-medium cursor-pointer"
                 />
               </div>
 
@@ -189,7 +200,7 @@ function App() {
                           type="checkbox" 
                           checked={userPrefs.environments[env]}
                           onChange={() => handleEnvironmentToggle(env)}
-                          className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                          className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors cursor-pointer"
                         />
                         <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -206,7 +217,7 @@ function App() {
                         type="checkbox" 
                         checked={userPrefs.includePaid}
                         onChange={(e) => updatePref('includePaid', e.target.checked)}
-                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors cursor-pointer"
                       />
                       <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -216,49 +227,69 @@ function App() {
                   </label>
                 </div>
               </div>
-
-              {/* Status/Error Messages */}
-              {activeRedirection?.error && (
-                <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-100 font-medium text-center">
-                  {activeRedirection.error}
-                </div>
-              )}
-              
-              {!selectedLocation && (
-                <div className="p-4 bg-slate-50 text-slate-500 text-xs rounded-xl text-center border border-slate-100">
-                  Select a starting location on the map to calculate redirection.
-                </div>
-              )}
-
-              {/* Current Redirection Suggestion */}
-              {activeRedirection && !activeRedirection.error && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm">
-                  <p className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                    Redirection Active
-                  </p>
-                  <div className="text-yellow-900 text-xs space-y-2 leading-relaxed">
-                    <p><span className="font-semibold text-yellow-700">Target:</span> {activeRedirection.name}</p>
-                    <p><span className="font-semibold text-yellow-700">Estimated time:</span> {activeRedirection.estimatedTime} mins (via {activeRedirection.travelMode})</p>
-                    <p className="text-yellow-600 italic mt-2 bg-yellow-100/50 p-2 rounded-lg inline-block">({activeRedirection.reason})</p>
-                  </div>
+              </div>
+              ) : (
+                <div className="space-y-4 animate-fade-in">
+                  <button 
+                    onClick={() => setViewState('preferences')}
+                    className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer mb-4"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                    </svg>
+                    Back to Preferences
+                  </button>
+                  
+                  {results.length > 0 ? (
+                    results.map((site, index) => {
+                      const isRecommended = index === 0;
+                      const densityText = site.densityScore < 50 ? 'Low Density' : site.densityScore < 80 ? 'Medium Density' : 'High Density';
+                      
+                      return (
+                        <div 
+                          key={site.name} 
+                          onClick={() => setActiveRedirection(site)}
+                          className={`p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:-translate-y-1 ${isRecommended ? 'border-green-300 bg-green-50' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <p className={`font-bold ${isRecommended ? 'text-green-800' : 'text-slate-800'}`}>{index + 1}. {site.name}</p>
+                            {isRecommended && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold bg-green-200 text-green-800 rounded-md tracking-wider">
+                                [ RECOMMENDED ]
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600 mt-2">
+                             <span className={`px-2 py-1 rounded-md border ${isRecommended ? 'bg-white border-green-200' : 'bg-slate-50 border-slate-100'}`}>{site.travelTime} min</span>
+                             <span className={`px-2 py-1 rounded-md border ${isRecommended ? 'bg-white border-green-200' : 'bg-slate-50 border-slate-100'}`}>{site.environment}</span>
+                             <span className={`px-2 py-1 rounded-md border ${isRecommended ? 'bg-white border-green-200' : 'bg-slate-50 border-slate-100'}`}>{densityText}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-slate-400 italic">Select a location and click Redirect to see alternatives.</p>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Redirect Action Button */}
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <button 
-                onClick={handleRedirect}
-                disabled={!selectedLocation}
-                className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
-                </svg>
-                Redirect Me Now
-              </button>
-            </div>
+            {viewState === 'preferences' && (
+              <div className="px-6 pb-6 pt-4 border-t border-slate-100 flex-shrink-0">
+                <button 
+                  onClick={handleRedirect}
+                  disabled={!selectedLocation}
+                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer hover:cursor-pointer hover:brightness-105"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+                  </svg>
+                  Redirect Me Now
+                </button>
+              </div>
+            )}
 
           </div>
         </div>

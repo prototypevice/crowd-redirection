@@ -45,7 +45,10 @@ const MapContent = ({ setIsLoaded, selectedSite, activeRedirection }) => {
     
     // Smoothly pan to the redirection target, or just the selected site
     if (activeRedirection && !activeRedirection.error) {
-      map.panTo({ lat: activeRedirection.lat, lng: activeRedirection.lng });
+      const target = STUDY_SITES.find(s => s.name === activeRedirection.name);
+      if (target) {
+        map.panTo({ lat: target.lat, lng: target.lng });
+      }
     } else if (selectedSite) {
       map.panTo({ lat: selectedSite.lat, lng: selectedSite.lng });
     }
@@ -68,7 +71,11 @@ const MapComponent = ({ onLocationSelect, activeRedirection, mockData }) => {
     );
   }
 
-  const activeSite = hoveredSite || selectedSite;
+  const targetRedirectionSite = activeRedirection && !activeRedirection.error 
+    ? STUDY_SITES.find(s => s.name === activeRedirection.name) 
+    : null;
+    
+  const activeSite = hoveredSite || targetRedirectionSite || selectedSite;
 
   return (
     <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: '#e5e7eb' }}>
